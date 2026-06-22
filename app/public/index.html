@@ -309,6 +309,79 @@
           <div class="ops-metrics" id="dashboardMetrics"></div>
           <p id="opsStatusMessage" class="status-inline" aria-live="polite"></p>
         </section>
+
+        <section class="clinical-panel" aria-labelledby="clinicalTitle">
+          <div class="panel-header panel-header--stacked">
+            <div>
+              <h2 id="clinicalTitle">Clinical Intelligence</h2>
+              <p class="panel-copy">Patient profile aggregation, document extraction, conflict detection, and coding review.</p>
+            </div>
+            <button id="refreshClinicalButton" class="ghost-btn" type="button">Refresh profile</button>
+          </div>
+
+          <div class="clinical-actions">
+            <button id="uploadDocumentButton" type="button">Upload document</button>
+            <button id="aggregateProfileButton" type="button">Aggregate profile</button>
+            <button id="detectConflictsButton" type="button">Detect conflicts</button>
+            <button id="suggestCodesButton" type="button">Suggest codes</button>
+            <button id="reviewQueueButton" type="button">Review queue</button>
+            <button id="configureThresholdButton" type="button">Configure thresholds</button>
+          </div>
+
+          <div class="clinical-tabs" role="tablist" aria-label="Clinical profile sections">
+            <button class="clinical-tab is-active" id="tab-overview" role="tab" aria-selected="true" aria-controls="panel-overview">Overview</button>
+            <button class="clinical-tab" id="tab-medications" role="tab" aria-selected="false" aria-controls="panel-medications">Medications</button>
+            <button class="clinical-tab" id="tab-allergies" role="tab" aria-selected="false" aria-controls="panel-allergies">Allergies</button>
+            <button class="clinical-tab" id="tab-diagnoses" role="tab" aria-selected="false" aria-controls="panel-diagnoses">Diagnoses</button>
+            <button class="clinical-tab" id="tab-conflicts" role="tab" aria-selected="false" aria-controls="panel-conflicts">Conflicts</button>
+            <button class="clinical-tab" id="tab-codes" role="tab" aria-selected="false" aria-controls="panel-codes">Code suggestions</button>
+            <button class="clinical-tab" id="tab-documents" role="tab" aria-selected="false" aria-controls="panel-documents">Documents</button>
+          </div>
+
+          <div id="panel-overview" class="clinical-tab-panel" role="tabpanel" aria-labelledby="tab-overview">
+            <div id="overviewContent" class="clinical-content">
+              <p>No profile data available. Upload documents or run aggregation.</p>
+            </div>
+          </div>
+
+          <div id="panel-medications" class="clinical-tab-panel" role="tabpanel" aria-labelledby="tab-medications" hidden>
+            <div id="medicationsContent" class="clinical-content"></div>
+          </div>
+
+          <div id="panel-allergies" class="clinical-tab-panel" role="tabpanel" aria-labelledby="tab-allergies" hidden>
+            <div id="allergiesContent" class="clinical-content"></div>
+          </div>
+
+          <div id="panel-diagnoses" class="clinical-tab-panel" role="tabpanel" aria-labelledby="tab-diagnoses" hidden>
+            <div id="diagnosesContent" class="clinical-content"></div>
+          </div>
+
+          <div id="panel-conflicts" class="clinical-tab-panel" role="tabpanel" aria-labelledby="tab-conflicts" hidden>
+            <div class="results-toolbar">
+              <div class="field compact-field">
+                <label for="conflictSeverityFilter">Severity</label>
+                <select id="conflictSeverityFilter" name="conflictSeverityFilter">
+                  <option value="">All</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
+              </div>
+              <button id="refreshConflictQueueButton" class="ghost-btn" type="button">Refresh queue</button>
+            </div>
+            <div id="conflictsContent" class="clinical-content"></div>
+          </div>
+
+          <div id="panel-codes" class="clinical-tab-panel" role="tabpanel" aria-labelledby="tab-codes" hidden>
+            <div id="codesContent" class="clinical-content"></div>
+          </div>
+
+          <div id="panel-documents" class="clinical-tab-panel" role="tabpanel" aria-labelledby="tab-documents" hidden>
+            <div id="documentsContent" class="clinical-content"></div>
+          </div>
+
+          <p id="clinicalStatusMessage" class="status-inline" aria-live="polite"></p>
+        </section>
       </section>
     </main>
 
@@ -318,6 +391,89 @@
       <form method="dialog">
         <button type="submit">Close</button>
       </form>
+    </dialog>
+
+    <dialog id="uploadDocumentDialog" aria-labelledby="uploadDialogTitle">
+      <h3 id="uploadDialogTitle">Upload clinical document</h3>
+      <form id="uploadDocumentForm" class="upload-form" method="dialog">
+        <div class="field">
+          <label for="clinicalFileName">File name</label>
+          <input id="clinicalFileName" name="fileName" type="text" placeholder="visit-note.pdf" required />
+        </div>
+        <div class="field">
+          <label for="clinicalFileType">File type</label>
+          <select id="clinicalFileType" name="fileType">
+            <option value="pdf">PDF</option>
+            <option value="docx">DOCX</option>
+          </select>
+        </div>
+        <div class="dialog-actions">
+          <button type="submit">Upload</button>
+          <button id="closeUploadDialogButton" type="button" class="ghost-btn">Cancel</button>
+        </div>
+      </form>
+      <p id="uploadProgressMessage" class="status-inline" aria-live="polite"></p>
+    </dialog>
+
+    <dialog id="thresholdDialog" aria-labelledby="thresholdDialogTitle">
+      <div class="dialog-header">
+        <h3 id="thresholdDialogTitle">Threshold configuration</h3>
+        <button id="closeThresholdDialogButton" type="button" class="ghost-btn">Close</button>
+      </div>
+      <form id="thresholdForm" class="upload-form">
+        <div class="field">
+          <label for="icd10Threshold">ICD-10 threshold</label>
+          <input id="icd10Threshold" name="icd10Threshold" type="range" min="0" max="1" step="0.01" value="0.70" />
+          <span id="icd10ThresholdLabel">0.70</span>
+        </div>
+        <div class="field">
+          <label for="cptThreshold">CPT threshold</label>
+          <input id="cptThreshold" name="cptThreshold" type="range" min="0" max="1" step="0.01" value="0.70" />
+          <span id="cptThresholdLabel">0.70</span>
+        </div>
+        <div class="field">
+          <label for="thresholdReason">Change reason</label>
+          <textarea id="thresholdReason" name="thresholdReason" rows="3" placeholder="Explain why these thresholds changed"></textarea>
+        </div>
+        <div class="dialog-actions">
+          <button type="submit">Save thresholds</button>
+        </div>
+      </form>
+      <div id="thresholdHistory" class="threshold-history"></div>
+      <p id="thresholdMessage" class="status-inline" aria-live="polite"></p>
+    </dialog>
+
+    <dialog id="conflictResolutionDialog" aria-labelledby="conflictResolutionTitle">
+      <div class="dialog-header">
+        <h3 id="conflictResolutionTitle">Resolve conflict</h3>
+        <button id="closeConflictDialogButton" type="button" class="ghost-btn">Close</button>
+      </div>
+      <div id="conflictComparison" class="conflict-comparison"></div>
+      <form id="conflictResolutionForm" class="upload-form">
+        <div class="field">
+          <label for="conflictAction">Resolution action</label>
+          <select id="conflictAction" name="conflictAction">
+            <option value="resolve">Resolve</option>
+            <option value="merge">Merge</option>
+            <option value="discard">Discard</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="selectedConflictVersion">Pick version to keep</label>
+          <select id="selectedConflictVersion" name="selectedConflictVersion">
+            <option value="left">Keep left version</option>
+            <option value="right">Keep right version</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="conflictResolutionNotes">Notes</label>
+          <textarea id="conflictResolutionNotes" name="conflictResolutionNotes" rows="3" placeholder="Optional resolution notes"></textarea>
+        </div>
+        <div class="dialog-actions">
+          <button type="submit">Confirm resolution</button>
+        </div>
+      </form>
+      <p id="conflictResolutionMessage" class="status-inline" aria-live="polite"></p>
     </dialog>
 
     <script src="/app.js"></script>

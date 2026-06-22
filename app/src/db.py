@@ -27,6 +27,7 @@ def initialize_database(db_path: Path | None = None) -> None:
         connection.executescript(schema_sql)
         _seed_if_empty(connection)
         _seed_supporting_records(connection)
+        _migrate_clinical_schema(connection)
 
 
 def _seed_if_empty(connection: sqlite3.Connection) -> None:
@@ -173,6 +174,8 @@ def _seed_if_empty(connection: sqlite3.Connection) -> None:
 
 
 def _seed_supporting_records(connection: sqlite3.Connection) -> None:
+    import json
+
     patient_exists = connection.execute(
         "SELECT COUNT(*) AS count FROM patient_profiles WHERE id = 1"
     ).fetchone()["count"]
@@ -218,6 +221,75 @@ def _seed_supporting_records(connection: sqlite3.Connection) -> None:
             (1,),
         )
 
+    clinical_profile_exists = connection.execute(
+        "SELECT COUNT(*) AS count FROM clinical_profile WHERE patient_profile_id = 1"
+    ).fetchone()["count"]
+    if clinical_profile_exists == 0:
+        connection.execute(
+            """
+            INSERT INTO clinical_profile(
+                patient_profile_id,
+                medications_json,
+                allergies_json,
+                diagnoses_json,
+                procedures_json,
+                vitals_json,
+                lab_results_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                1,
+                json.dumps(
+                    [
+                        {"entity_value": "Lisinopril 10mg daily", "confidence_score": 0.92, "source_type": "intake"},
+                        {"entity_value": "Metformin 500mg twice daily", "confidence_score": 0.88, "source_type": "intake"},
+                    ]
+                ),
+                json.dumps(
+                    [
+                        {"entity_value": "Penicillin", "confidence_score": 0.95, "source_type": "intake"},
+                    ]
+                ),
+                json.dumps(
+                    [
+                        {"entity_value": "Type 2 Diabetes", "confidence_score": 0.90, "source_type": "intake"},
+                        {"entity_value": "Hypertension", "confidence_score": 0.88, "source_type": "intake"},
+                    ]
+                ),
+                json.dumps(
+                    [
+                        {"entity_value": "Office follow-up visit", "confidence_score": 0.85, "source_type": "intake"},
+                    ]
+                ),
+                json.dumps(
+                    [
+                        {"entity_value": "BP 140/90", "confidence_score": 0.92, "source_type": "intake"},
+                        {"entity_value": "HR 72", "confidence_score": 0.91, "source_type": "intake"},
+                    ]
+                ),
+                json.dumps(
+                    [
+                        {"entity_value": "Glucose 145", "confidence_score": 0.89, "source_type": "intake"},
+                    ]
+                ),
+            ),
+        )
+
+    for code_type in ("icd10", "cpt"):
+        threshold_exists = connection.execute(
+            "SELECT COUNT(*) AS count FROM code_threshold_config WHERE code_type = ?",
+            (code_type,),
+        ).fetchone()["count"]
+        if threshold_exists == 0:
+            connection.execute(
+                """
+                INSERT INTO code_threshold_config(code_type, confidence_threshold, updated_by)
+                VALUES (?, ?, ?)
+                """,
+                (code_type, 0.70, "system"),
+            )
+
     provider_rows = connection.execute("SELECT id FROM providers").fetchall()
     for provider in provider_rows:
         for calendar_type in ("google", "outlook"):
@@ -239,3 +311,26 @@ def _seed_supporting_records(connection: sqlite3.Connection) -> None:
                 )
 
     connection.commit()
+
+
+def _migrate_clinical_schema(connection: sqlite3.Connection) -> None:
+    def ensure_column(table_name: str, column_name: str, column_sql: str) -> None:
+        existing_columns = {
+            row[1] for row in connection.execute(f"PRAGMA table_info({table_name})").fetchall()
+        }
+        if column_name not in existing_columns:
+            connection.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_sql}")
+
+    ensure_column("medication_conflicts", "resolution_status", "resolution_status TEXT NOT NULL DEFAULT 'unresolved'")
+    ensure_column("medication_conflicts", "resolution_action", "resolution_action TEXT")
+    ensure_column("medication_conflicts", "resolution_notes", "resolution_notes TEXT")
+    ensure_column("medication_conflicts", "resolved_by", "resolved_by TEXT")
+    ensure_column("medication_conflicts", "resolved_at", "resolved_at TEXT")
+
+    ensure_column("allergy_drug_conflicts", "resolution_status", "resolution_status TEXT NOT NULL DEFAULT 'unresolved'")
+    ensure_column("allergy_drug_conflicts", "resolution_action", "resolution_action TEXT")
+    ensure_column("allergy_drug_conflicts", "resolution_notes", "resolution_notes TEXT")
+    ensure_column("allergy_drug_conflicts", "resolved_by", "resolved_by TEXT")
+    ensure_column("allergy_drug_conflicts", "resolved_at", "resolved_at TEXT")
+
+    ensure_column("code_suggestions", "auto_accepted", "auto_accepted INTEGER NOT NULL DEFAULT 0")

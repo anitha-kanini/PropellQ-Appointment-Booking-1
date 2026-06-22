@@ -632,6 +632,240 @@ dialog {
   width: min(480px, calc(100% - 1rem));
 }
 
+.clinical-panel {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.clinical-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.clinical-actions button {
+  width: auto;
+  min-height: 40px;
+}
+
+.clinical-tabs {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.clinical-tab {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  min-height: 36px;
+  padding: 0.35rem 0.6rem;
+  background: transparent;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.clinical-tab.is-active {
+  color: var(--brand-strong);
+  border-bottom-color: var(--brand-strong);
+  font-weight: 700;
+}
+
+.clinical-content {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.entity-item,
+.code-suggestion,
+.document-item {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.8rem;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 118, 110, 0.16);
+  background: rgba(15, 118, 110, 0.04);
+}
+
+.entity-item__title {
+  font-weight: 600;
+}
+
+.entity-item__meta {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.entity-item__confidence {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.15rem 0.45rem;
+  border-radius: 8px;
+  background: rgba(22, 101, 52, 0.14);
+  color: var(--success);
+  font-weight: 700;
+  font-size: 0.78rem;
+}
+
+.conflict-alert {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.75rem;
+  border-radius: 10px;
+  border-left: 4px solid #dc2626;
+  background: rgba(220, 38, 38, 0.08);
+}
+
+.conflict-alert__severity {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+}
+
+.conflict-alert__severity--high {
+  color: #991b1b;
+}
+
+.conflict-alert__severity--medium {
+  color: #92400e;
+}
+
+.code-suggestion__code {
+  font-family: "IBM Plex Sans", monospace;
+  font-size: 0.95rem;
+  color: var(--brand-strong);
+  font-weight: 700;
+}
+
+.code-suggestion__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.code-suggestion__actions button {
+  width: auto;
+  min-height: 34px;
+}
+
+.document-item__name {
+  font-weight: 600;
+}
+
+.document-item__status {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: rgba(15, 118, 110, 0.12);
+  color: var(--brand-strong);
+}
+
+.upload-form {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.conflict-comparison__entity--diff {
+  outline: 2px solid rgba(194, 65, 12, 0.24);
+}
+
+.conflict-comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.conflict-comparison__entity,
+.threshold-history-item {
+  background: #f8fafc;
+  border: 1px solid #dbe4f0;
+  border-radius: 14px;
+  padding: 0.9rem 1rem;
+}
+
+.conflict-comparison__title,
+.threshold-history-item {
+  font-size: 0.92rem;
+}
+
+.conflict-comparison__value {
+  font-weight: 700;
+  margin-bottom: 0.6rem;
+}
+
+.conflict-comparison__provenance {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  color: #475569;
+}
+
+.conflict-comparison__badge {
+  display: inline-flex;
+  align-self: flex-start;
+  background: #e2e8f0;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.threshold-history {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.threshold-history-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.results-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 720px) {
+  .conflict-comparison {
+    grid-template-columns: 1fr;
+  }
+
+  .results-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
 @media (max-width: 767px) {
   .hero-metrics {
     grid-template-columns: 1fr;
@@ -644,7 +878,10 @@ dialog {
   .toolbar-actions,
   .ops-actions,
   .sticky-cta,
-  .integration-actions {
+  .integration-actions,
+  .clinical-actions,
+  .code-suggestion__actions,
+  .dialog-actions {
     flex-direction: column;
   }
 

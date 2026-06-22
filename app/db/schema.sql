@@ -222,6 +222,179 @@ CREATE TABLE IF NOT EXISTS provider_external_events (
     FOREIGN KEY (provider_id) REFERENCES providers (id)
 );
 
+CREATE TABLE IF NOT EXISTS clinical_documents (
+    id INTEGER PRIMARY KEY,
+    patient_profile_id INTEGER NOT NULL,
+    file_name TEXT NOT NULL,
+    file_type TEXT NOT NULL CHECK (file_type IN ('pdf', 'docx')),
+    storage_path TEXT NOT NULL,
+    file_size_bytes INTEGER,
+    upload_status TEXT NOT NULL DEFAULT 'uploaded' CHECK (upload_status IN ('uploaded', 'processing', 'complete', 'failed')),
+    processing_error TEXT,
+    extracted_at TEXT,
+    extraction_version TEXT,
+    upload_timestamp TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (patient_profile_id) REFERENCES patient_profiles (id)
+);
+
+CREATE TABLE IF NOT EXISTS extracted_entities (
+    id INTEGER PRIMARY KEY,
+    patient_profile_id INTEGER NOT NULL,
+    document_id INTEGER,
+    entity_type TEXT NOT NULL CHECK (entity_type IN ('medication', 'allergy', 'diagnosis', 'procedure', 'vital', 'lab_result')),
+    entity_value TEXT NOT NULL,
+    unit TEXT,
+    date_context TEXT,
+    confidence_score REAL,
+    source_type TEXT NOT NULL CHECK (source_type IN ('intake', 'document')),
+    source_id TEXT,
+    evidence_text TEXT,
+    extraction_model TEXT,
+    extracted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (patient_profile_id) REFERENCES patient_profiles (id),
+    FOREIGN KEY (document_id) REFERENCES clinical_documents (id)
+);
+
+CREATE TABLE IF NOT EXISTS clinical_profile (
+    id INTEGER PRIMARY KEY,
+    patient_profile_id INTEGER NOT NULL UNIQUE,
+    demographics_json TEXT,
+    intake_summary_json TEXT,
+    medications_json TEXT,
+    allergies_json TEXT,
+    diagnoses_json TEXT,
+    procedures_json TEXT,
+    vitals_json TEXT,
+    lab_results_json TEXT,
+    conflicts_json TEXT,
+    code_suggestions_json TEXT,
+    last_aggregated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (patient_profile_id) REFERENCES patient_profiles (id)
+);
+
+CREATE TABLE IF NOT EXISTS medication_conflicts (
+    id INTEGER PRIMARY KEY,
+    patient_profile_id INTEGER NOT NULL,
+    medication_1_id INTEGER NOT NULL,
+    medication_2_id INTEGER NOT NULL,
+    conflict_type TEXT NOT NULL CHECK (conflict_type IN ('interaction', 'duplicate_therapy')),
+    severity TEXT NOT NULL CHECK (severity IN ('high', 'medium', 'low')),
+    conflict_description TEXT,
+    detected_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    reviewed_at TEXT,
+    reviewed_by TEXT,
+    review_status TEXT CHECK (review_status IN ('acknowledged', 'overridden', 'cleared')),
+    resolution_status TEXT NOT NULL DEFAULT 'unresolved' CHECK (resolution_status IN ('unresolved', 'resolved', 'merged', 'discarded')),
+    resolution_action TEXT CHECK (resolution_action IN ('resolve', 'merge', 'discard')),
+    resolution_notes TEXT,
+    resolved_by TEXT,
+    resolved_at TEXT,
+    FOREIGN KEY (patient_profile_id) REFERENCES patient_profiles (id),
+    FOREIGN KEY (medication_1_id) REFERENCES extracted_entities (id),
+    FOREIGN KEY (medication_2_id) REFERENCES extracted_entities (id)
+);
+
+CREATE TABLE IF NOT EXISTS allergy_drug_conflicts (
+    id INTEGER PRIMARY KEY,
+    patient_profile_id INTEGER NOT NULL,
+    allergy_id INTEGER NOT NULL,
+    medication_id INTEGER NOT NULL,
+    severity TEXT NOT NULL CHECK (severity IN ('high', 'medium', 'low')),
+    conflict_description TEXT,
+    detected_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    reviewed_at TEXT,
+    reviewed_by TEXT,
+    review_status TEXT CHECK (review_status IN ('acknowledged', 'overridden', 'cleared')),
+    resolution_status TEXT NOT NULL DEFAULT 'unresolved' CHECK (resolution_status IN ('unresolved', 'resolved', 'merged', 'discarded')),
+    resolution_action TEXT CHECK (resolution_action IN ('resolve', 'merge', 'discard')),
+    resolution_notes TEXT,
+    resolved_by TEXT,
+    resolved_at TEXT,
+    FOREIGN KEY (patient_profile_id) REFERENCES patient_profiles (id),
+    FOREIGN KEY (allergy_id) REFERENCES extracted_entities (id),
+    FOREIGN KEY (medication_id) REFERENCES extracted_entities (id)
+);
+
+CREATE TABLE IF NOT EXISTS code_suggestions (
+    id INTEGER PRIMARY KEY,
+    patient_profile_id INTEGER NOT NULL,
+    code_type TEXT NOT NULL CHECK (code_type IN ('icd10', 'cpt')),
+    code_value TEXT NOT NULL,
+    code_description TEXT,
+    confidence_score REAL,
+    evidence_text TEXT,
+    review_required INTEGER NOT NULL DEFAULT 0,
+    auto_accepted INTEGER NOT NULL DEFAULT 0,
+    suggestion_status TEXT NOT NULL DEFAULT 'pending' CHECK (suggestion_status IN ('pending', 'accepted', 'rejected', 'overridden')),
+    reviewer_id TEXT,
+    reviewed_at TEXT,
+    override_code TEXT,
+    rejection_reason TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (patient_profile_id) REFERENCES patient_profiles (id)
+);
+
+CREATE TABLE IF NOT EXISTS code_review_actions (
+    id INTEGER PRIMARY KEY,
+    code_suggestion_id INTEGER NOT NULL,
+    reviewer_id TEXT NOT NULL,
+    action TEXT NOT NULL CHECK (action IN ('accept', 'reject', 'override')),
+    override_code TEXT,
+    rejection_reason TEXT,
+    notes TEXT,
+    action_timestamp TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (code_suggestion_id) REFERENCES code_suggestions (id)
+);
+
+CREATE TABLE IF NOT EXISTS clinical_audit_log (
+    id INTEGER PRIMARY KEY,
+    patient_profile_id INTEGER NOT NULL,
+    action_type TEXT NOT NULL CHECK (action_type IN ('document_upload', 'extraction', 'conflict_detected', 'conflict_resolution', 'code_review', 'profile_aggregation')),
+    actor_type TEXT NOT NULL CHECK (actor_type IN ('patient', 'clinician', 'system')),
+    actor_id TEXT,
+    entity_type TEXT,
+    entity_id INTEGER,
+    details_json TEXT,
+    timestamp TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (patient_profile_id) REFERENCES patient_profiles (id)
+);
+
+CREATE TABLE IF NOT EXISTS code_threshold_config (
+    id INTEGER PRIMARY KEY,
+    code_type TEXT NOT NULL UNIQUE CHECK (code_type IN ('icd10', 'cpt')),
+    confidence_threshold REAL NOT NULL,
+    updated_by TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS threshold_config_audit (
+    id INTEGER PRIMARY KEY,
+    code_type TEXT NOT NULL,
+    old_threshold REAL,
+    new_threshold REAL NOT NULL,
+    actor_id TEXT NOT NULL,
+    actor_role TEXT NOT NULL,
+    change_reason TEXT,
+    changed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS conflict_resolutions (
+    id INTEGER PRIMARY KEY,
+    conflict_type TEXT NOT NULL CHECK (conflict_type IN ('medication', 'allergy')),
+    conflict_id INTEGER NOT NULL,
+    patient_profile_id INTEGER NOT NULL,
+    resolution_status TEXT NOT NULL CHECK (resolution_status IN ('resolved', 'merged', 'discarded')),
+    action_taken TEXT NOT NULL CHECK (action_taken IN ('resolve', 'merge', 'discard')),
+    reviewer_id TEXT NOT NULL,
+    reviewed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    source_versions_json TEXT NOT NULL,
+    details_json TEXT,
+    FOREIGN KEY (patient_profile_id) REFERENCES patient_profiles (id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_appointments_status_date
     ON appointments (status, appointment_date, start_time, id);
 
@@ -275,3 +448,33 @@ CREATE INDEX IF NOT EXISTS idx_manual_review_queue_status
 
 CREATE INDEX IF NOT EXISTS idx_provider_external_events_lookup
     ON provider_external_events (calendar_type, external_event_id, status, updated_at);
+
+CREATE INDEX IF NOT EXISTS idx_clinical_documents_patient_status
+    ON clinical_documents (patient_profile_id, upload_status, upload_timestamp);
+
+CREATE INDEX IF NOT EXISTS idx_extracted_entities_patient_type
+    ON extracted_entities (patient_profile_id, entity_type, extracted_at);
+
+CREATE INDEX IF NOT EXISTS idx_medication_conflicts_patient
+    ON medication_conflicts (patient_profile_id, severity, detected_at);
+
+CREATE INDEX IF NOT EXISTS idx_allergy_conflicts_patient
+    ON allergy_drug_conflicts (patient_profile_id, severity, detected_at);
+
+CREATE INDEX IF NOT EXISTS idx_code_suggestions_review_queue
+    ON code_suggestions (patient_profile_id, code_type, review_required, suggestion_status, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_code_review_actions_suggestion
+    ON code_review_actions (code_suggestion_id, action_timestamp);
+
+CREATE INDEX IF NOT EXISTS idx_clinical_audit_log_patient
+    ON clinical_audit_log (patient_profile_id, action_type, timestamp);
+
+CREATE INDEX IF NOT EXISTS idx_code_threshold_config_type
+    ON code_threshold_config (code_type, updated_at);
+
+CREATE INDEX IF NOT EXISTS idx_threshold_config_audit_type
+    ON threshold_config_audit (code_type, changed_at);
+
+CREATE INDEX IF NOT EXISTS idx_conflict_resolutions_lookup
+    ON conflict_resolutions (patient_profile_id, conflict_type, conflict_id, reviewed_at);
